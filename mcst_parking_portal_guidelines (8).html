@@ -6,6 +6,10 @@
     <title>MCST Vehicle Parking Management System & BMSMA Guidelines</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0369a1">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <script src="config.js"></script>
     <script>
         tailwind.config = {
@@ -440,7 +444,11 @@
 
                 <!-- Admin Access Toggle Button -->
                 <div class="flex items-center gap-2">
-                    <button onclick="window.toggleAdminView()" id="admin-toggle-btn" class="px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-semibold flex items-center gap-2 transition">
+                    <button onclick="window.triggerPWAInstall()" id="pwa-install-btn" class="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Install App</span>
+                    </button>
+                    <button onclick="window.toggleAdminView()" id="admin-toggle-btn" class="px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
                         <i class="fa-solid fa-user-shield text-amber-400"></i>
                         <span id="admin-btn-text">MCST Admin Portal</span>
                     </button>
@@ -1608,6 +1616,38 @@ Formatting Guidelines:
             input.focus();
         };
     })();
+
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('PWA Service Worker registered:', reg.scope))
+                .catch(err => console.log('Service Worker registration note:', err));
+        });
+    }
+
+    // PWA Install Prompt handling
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        const btn = document.getElementById('pwa-install-btn');
+        if (btn) btn.classList.remove('hidden');
+    });
+
+    window.triggerPWAInstall = async function() {
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            if (outcome === 'accepted') {
+                const btn = document.getElementById('pwa-install-btn');
+                if (btn) btn.classList.add('hidden');
+            }
+            deferredInstallPrompt = null;
+        } else {
+            alert('To install Palm Springs MCST Parking as a desktop or mobile app:\n\n• Windows/Mac (Chrome or Edge): Click the Install icon (computer with down arrow) in the browser address bar, or use browser Menu > "Install Palm Springs Parking".\n\n• Android: Tap Chrome menu (⋮) > "Install App" or "Add to Home screen".\n\n• iPhone/iPad (Safari): Tap the Share button (square with arrow) > "Add to Home Screen".\n\n• Alternatively, run "Install_Desktop_App.bat" in your project folder to create a 1-click Windows desktop shortcut!');
+        }
+    };
     </script>
 </body>
 </html>
