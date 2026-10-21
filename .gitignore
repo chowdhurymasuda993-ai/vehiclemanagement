@@ -1,0 +1,11 @@
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local sensitive configuration
+config.js
+
+# Logs
+*.log

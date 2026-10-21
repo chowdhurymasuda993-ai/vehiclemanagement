@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCST Vehicle Parking Management System & BMSMA Guidelines</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        lotRed: '#ef4444',
+                        lotWhite: '#f8fafc',
+                        lotGreen: '#10b981'
+                    }
+                }
+            }
+        };
+
+        window.switchTab = function(tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.add('hidden'));
+            
+            const selectedTab = document.getElementById('tab-' + tabId);
+            if (selectedTab) {
+                selectedTab.classList.remove('hidden');
+            }
+
+            const navIds = ['guidelines', 'register', 'overnight', 'map', 'calculator'];
+            navIds.forEach(id => {
+                const btn = document.getElementById('nav-' + id);
+                const mBtn = document.getElementById('m-nav-' + id);
+                if (btn) {
+                    btn.classList.toggle('bg-brand-700', id === tabId);
+                    btn.classList.toggle('text-white', id === tabId);
+                    btn.classList.toggle('shadow', id === tabId);
+                    btn.classList.toggle('font-bold', id === tabId);
+                    btn.classList.toggle('font-medium', id !== tabId);
+                }
+                if (mBtn) {
+                    mBtn.classList.toggle('bg-brand-700', id === tabId);
+                    mBtn.classList.toggle('text-white', id === tabId);
+                }
+            });
+            if (tabId === 'map' && typeof window.filterLots === 'function') {
+                window.filterLots('all');
+            }
+        };
+
+        window.toggleAdminView = function() {
+            const adminSec = document.getElementById('admin-portal-section');
+            const adminBtnText = document.getElementById('admin-btn-text');
+            if (adminSec) {
+                adminSec.classList.toggle('hidden');
+                if (!adminSec.classList.contains('hidden')) {
+                    adminSec.scrollIntoView({ behavior: 'smooth' });
+                    if (adminBtnText) adminBtnText.innerText = "Close Admin Portal";
+                } else {
+                    if (adminBtnText) adminBtnText.innerText = "MCST Admin Portal";
+                }
+            }
+        };
+
+        window.showToast = function(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-xs font-medium transition-all transform translate-y-2 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+
+        window.updatePriorityNote = function() {
+            const priority = document.getElementById('reg-priority').value;
+            const box = document.getElementById('priority-info-box');
+            if (!box) return;
+            if (priority === '1st') {
+                box.className = "mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5";
+                box.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mt-0.5 text-sm"></i><div><span class="font-bold">1st Vehicle Entitlement:</span> Each Subsidiary Proprietor/Unit is entitled to 1 FREE designated parking slot with access to Red Resident Lots upon approval.</div>`;
+            } else {
+                box.className = "mt-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2.5";
+                box.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5 text-sm"></i><div><span class="font-bold">${priority} Vehicle Registration:</span> Subject to lot availability and MCST balloting. <strong>Monthly season fee of $50 per month, payable quarterly ($150/quarter)</strong>.</div>`;
+            }
+        };
+
+        window.handleFileUpload = function(e) {
+            const file = e.target.files[0];
+            const display = document.getElementById('file-name-display');
+            const text = document.getElementById('file-name-text');
+            if (file && display && text) {
+                text.innerText = file.name + ` (${(file.size/1024/1024).toFixed(2)} MB)`;
+                display.classList.remove('hidden');
+            }
+        };
+
+        window.calculateAdvanceNotice = function() {
+            const startDateVal = document.getElementById('ov-startdate').value;
+            const statusBox = document.getElementById('advance-status');
+            if (!startDateVal || !statusBox) return;
+
+            const startDate = new Date(startDateVal);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const diffTime = startDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 3) {
+                statusBox.className = "p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2";
+                statusBox.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> <span><strong>3-Day Advance Requirement Met (${diffDays} days in advance):</strong> Eligible for 2 Nights & 3 Days Free Overnight Waiver upon Management Approval.</span>`;
+            } else {
+                statusBox.className = "p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2";
+                statusBox.innerHTML = `<i class="fa-solid fa-clock text-amber-600"></i> <span><strong>Notice Period < 3 Days (${diffDays < 0 ? 'Past Date' : diffDays + ' day(s) in advance'}):</strong> Request will be processed, but overnight parking fee of $10/night applies if not submitted 3 days prior.</span>`;
+            }
+        };
+
+        window.handleRegistrationSubmit = function(e) {
+            e.preventDefault();
+            const unit = document.getElementById('reg-unit').value;
+            const plate = document.getElementById('reg-plate').value;
+            window.showToast(`Vehicle registration for ${plate} (Unit ${unit}) submitted to MCST Management!`);
+            e.target.reset();
+            const fileDisplay = document.getElementById('file-name-display');
+            if (fileDisplay) fileDisplay.classList.add('hidden');
+        };
+
+        window.handleOvernightSubmit = function(e) {
+            e.preventDefault();
+            const plate = document.getElementById('ov-plate').value;
+            window.showToast(`Overnight parking request for ${plate} submitted successfully!`);
+            e.target.reset();
+        };
+
+        window.calculateFee = function() {
+            const type = document.getElementById('calc-type').value;
+            const arrival = document.getElementById('calc-arrival').value;
+            const departure = document.getElementById('calc-departure').value;
+            const adv = document.getElementById('calc-advance').value;
+            const resultBox = document.getElementById('calc-result');
+
+            if (!arrival || !departure) {
+                resultBox.className = "p-4 rounded-xl bg-slate-100 text-slate-600 text-xs";
+                resultBox.innerHTML = "Please select both entry and exit times to calculate parking fee.";
+                return;
+            }
+
+            const start = new Date(arrival);
+            const end = new Date(departure);
+
+            if (end <= start) {
+                resultBox.className = "p-4 rounded-xl bg-rose-50 text-rose-700 text-xs border border-rose-200";
+                resultBox.innerHTML = "Exit time must be after entry time.";
+                return;
+            }
+
+            const totalHours = (end - start) / (1000 * 60 * 60);
+            let fee = 0;
+            let note = "";
+
+            if (type === 'resident-1st') {
+                fee = 0;
+                note = "1st Registered Resident Vehicle enjoys 100% complimentary parking in Red Lots.";
+            } else if (type === 'resident-2nd') {
+                fee = 50;
+                note = "2nd/3rd Resident Vehicle: $50/month ($150 payable quarterly). Day-to-day access granted.";
+            } else {
+                let current = new Date(start);
+                let nightCount = 0;
+
+                while (current < end) {
+                    const hrs = current.getHours();
+                    if (hrs >= 0 && hrs < 8) {
+                        nightCount++;
+                        current.setHours(8, 0, 0, 0);
+                        if (current > end) break;
+                    } else {
+                        current.setDate(current.getDate() + 1);
+                        current.setHours(0, 0, 0, 0);
+                    }
+                }
+
+                if (nightCount === 0) {
+                    fee = 0;
+                    note = "Daytime Parking (08:00 - 23:59): 100% FREE for all visitors.";
+                } else if (nightCount === 1) {
+                    fee = 0;
+                    note = "1 Night Overnight Parking Concession: FREE for registered visitors.";
+                } else if (nightCount === 2 && adv === 'yes') {
+                    fee = 0;
+                    note = "Extended Concession Applied: 2 Nights & 3 Days FREE with 3-day advance Management approval.";
+                } else {
+                    fee = nightCount * 10;
+                    note = `Overnight Parking Charge: $10/night x ${nightCount} night(s). (Standard rate without 3-day advance approval).`;
+                }
+            }
+
+            resultBox.className = "p-4 rounded-xl bg-brand-50 border border-brand-200 text-brand-900 text-xs space-y-1";
+            resultBox.innerHTML = `
+                <div class="font-bold text-sm text-brand-700">Estimated Total Fee: S$ ${fee.toFixed(2)}</div>
+                <div class="text-slate-600">Total Duration: <strong>${totalHours.toFixed(1)} hours</strong></div>
+                <div class="text-slate-500 italic mt-1">${note}</div>
+            `;
+        };
+
+        const parkingLots = [
+            { id: 'R-01', color: 'Red', type: 'Resident', status: 'Occupied', plate: 'SGB1234X' },
+            { id: 'R-02', color: 'Red', type: 'Resident', status: 'Available', plate: '' },
+            { id: 'R-03', color: 'Red', type: 'Resident', status: 'Occupied', plate: 'SMN8888A' },
+            { id: 'R-04', color: 'Red', type: 'Resident', status: 'Available', plate: '' },
+            { id: 'R-05', color: 'Red', type: 'Resident', status: 'Occupied', plate: 'SKT9900K' },
+            { id: 'R-06', color: 'Red', type: 'Resident', status: 'Available', plate: '' },
+            { id: 'R-07', color: 'Red', type: 'Resident', status: 'Available', plate: '' },
+            { id: 'R-08', color: 'Red', type: 'Resident', status: 'Occupied', plate: 'SLA2020B' },
+            { id: 'W-01', color: 'White', type: 'Visitor', status: 'Available', plate: '' },
+            { id: 'W-02', color: 'White', type: 'Visitor', status: 'Occupied', plate: 'SLK3333C' },
+            { id: 'W-03', color: 'White', type: 'Visitor', status: 'Available', plate: '' },
+            { id: 'W-04', color: 'White', type: 'Visitor', status: 'Available', plate: '' },
+            { id: 'W-05', color: 'White', type: 'Visitor', status: 'Occupied', plate: 'SBA4444D' },
+            { id: 'W-06', color: 'White', type: 'Visitor', status: 'Available', plate: '' },
+            { id: 'G-01', color: 'Green', type: 'EV Charging', status: 'Occupied', plate: 'SNE7777E (Tesla)' },
+            { id: 'G-02', color: 'Green', type: 'EV Charging', status: 'Available', plate: '' }
+        ];
+
+        window.filterLots = function(filterColor) {
+            const container = document.getElementById('lots-grid-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const filtered = filterColor === 'all' ? parkingLots : parkingLots.filter(l => l.color === filterColor);
+
+            filtered.forEach(lot => {
+                const card = document.createElement('div');
+                let borderClass = lot.color === 'Red' ? 'border-red-400 bg-red-50/40' : (lot.color === 'Green' ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-300 bg-slate-50/50');
+                let badgeClass = lot.color === 'Red' ? 'bg-red-500 text-white' : (lot.color === 'Green' ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white');
+                let statusBadge = lot.status === 'Available' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-800 border-rose-200';
+
+                card.className = `p-3 rounded-xl border-2 ${borderClass} transition flex flex-col justify-between h-28 relative`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-sm text-slate-800">${lot.id}</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${lot.color}</span>
+                    </div>
+                    <div class="text-[11px] font-semibold text-slate-500">${lot.type} Lot</div>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusBadge}">${lot.status}</span>
+                        ${lot.plate ? `<span class="text-[10px] font-mono font-bold text-slate-700">${lot.plate}</span>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            window.filterLots('all');
+        });
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-brand-600 selection:text-white">
+
+    <!-- Top Navigation Header with 30% increased height and padding -->
+    <header class="bg-slate-900 text-white sticky top-0 z-50 border-b border-slate-800 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-28 py-2">
+                <!-- Condo / MCST Brand Logo -->
+                <div class="flex items-center gap-3 cursor-pointer" onclick="window.switchTab('guidelines')">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-brand-600/30">
+                        <i class="fa-solid fa-square-parking text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base sm:text-xl tracking-tight leading-tight text-white">Palm Springs Residence</h1>
+                        <p class="text-[11px] font-semibold text-brand-400 uppercase tracking-wider">MCST Plan No. 4281 • BMSMA By-Laws</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <button onclick="window.switchTab('guidelines')" id="nav-guidelines" class="px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-brand-700 text-white shadow">
+                        <i class="fa-solid fa-book text-xs"></i> By-Law Rules & Guidelines
+                    </button>
+                    <button onclick="window.switchTab('register')" id="nav-register" class="px-4 py-2.5 rounded-lg text-xs font-medium transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-id-card text-xs"></i> Vehicle Registration
+                    </button>
+                    <button onclick="window.switchTab('overnight')" id="nav-overnight" class="px-4 py-2.5 rounded-lg text-xs font-medium transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-moon text-xs text-amber-400"></i> Overnight Request
+                    </button>
+                    <button onclick="window.switchTab('map')" id="nav-map" class="px-4 py-2.5 rounded-lg text-xs font-medium transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-map-location-dot text-xs"></i> Carpark Status
+                    </button>
+                    <button onclick="window.switchTab('calculator')" id="nav-calculator" class="px-4 py-2.5 rounded-lg text-xs font-medium transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-calculator text-xs"></i> Fee Calculator
+                    </button>
+                </nav>
+
+                <!-- Admin Access Toggle Button -->
+                <div class="flex items-center gap-2">
+                    <button onclick="window.toggleAdminView()" id="admin-toggle-btn" class="px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-semibold flex items-center gap-2 transition">
+                        <i class="fa-solid fa-user-shield text-amber-400"></i>
+                        <span id="admin-btn-text">MCST Admin Portal</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Subbar -->
+        <div class="md:hidden border-t border-slate-800 bg-slate-900/95 overflow-x-auto">
+            <div class="flex px-3 py-2.5 space-x-1 min-w-max">
+                <button onclick="window.switchTab('guidelines')" id="m-nav-guidelines" class="px-3.5 py-2 rounded-md text-xs font-medium bg-brand-700 text-white">Guidelines</button>
+                <button onclick="window.switchTab('register')" id="m-nav-register" class="px-3.5 py-2 rounded-md text-xs font-medium text-slate-300 hover:bg-slate-800">Register</button>
+                <button onclick="window.switchTab('overnight')" id="m-nav-overnight" class="px-3.5 py-2 rounded-md text-xs font-medium text-slate-300 hover:bg-slate-800">Overnight</button>
+                <button onclick="window.switchTab('map')" id="m-nav-map" class="px-3.5 py-2 rounded-md text-xs font-medium text-slate-300 hover:bg-slate-800">Carpark Map</button>
+                <button onclick="window.switchTab('calculator')" id="m-nav-calculator" class="px-3.5 py-2 rounded-md text-xs font-medium text-slate-300 hover:bg-slate-800">Calculator</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Banner -->
+    <div id="toast-container" class="fixed top-24 right-4 z-50 space-y-2 max-w-sm w-full pointer-events-none"></div>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- ==================== TAB 1: RULES & GUIDELINES ==================== -->
+        <section id="tab-guidelines" class="tab-content space-y-8">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl text-white pointer-events-none">
+                    <i class="fa-solid fa-car"></i>
+                </div>
+                <div class="max-w-3xl relative z-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-600/30 text-brand-100 text-xs font-semibold mb-3 border border-brand-500/30">
+                        <i class="fa-solid fa-scale-balanced"></i> Statutory By-Law Framework (BMSMA 2004)
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">MCST Vehicle Parking By-Laws & Guidelines</h2>
+                    <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                        Under the Building Maintenance and Strata Management Act (BMSMA), all residents and visitors must strictly adhere to the designated parking allocation rules, lot color codes, and overnight parking policies governed by the Management Corporation Strata Title.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Key Parking Rules Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Daytime Free Parking -->
+                <div class="bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-4 text-xl font-bold">
+                        <i class="fa-solid fa-sun"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-lg mb-1">Daytime Free Parking</h3>
+                    <div class="text-2xl font-black text-amber-600 mb-2">08:00 to 23:59</div>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        All registered resident vehicles and valid visitors enjoy free complimentary parking within these operational hours daily.
+                    </p>
+                </div>
+
+                <!-- Overnight Parking Charge -->
+                <div class="bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 text-xl font-bold">
+                        <i class="fa-solid fa-moon"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-lg mb-1">Overnight Parking Charge</h3>
+                    <div class="text-2xl font-black text-indigo-600 mb-2">00:00 to 07:59</div>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        Parking is <span class="font-semibold text-rose-600">chargeable at $10.00/night</span> per unapproved vehicle. Automatic IU billing applies at the gantry.
+                    </p>
+                </div>
+
+                <!-- Overnight Concession -->
+                <div class="bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 text-xl font-bold">
+                        <i class="fa-solid fa-gift"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-lg mb-1">Extended Parking Waiver</h3>
+                    <div class="text-2xl font-black text-emerald-600 mb-2">Up to 2 Nights Free</div>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        <span class="font-medium text-slate-900">1 night parking is free.</span> Up to <span class="font-semibold text-emerald-700">2 nights & 3 days free</span> if approved by Management <u>3 days in advance</u>.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Color Coded Parking Lots System -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">Designated Lot Color Markings</h3>
+                        <p class="text-slate-500 text-sm">Observe ground paint indicators before parking to avoid wheel clamping.</p>
+                    </div>
+                    <span class="hidden sm:inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">Strict Enforcement</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Red Lots -->
+                    <div class="rounded-xl border-2 border-red-500 bg-red-50/30 p-5 relative overflow-hidden">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white font-bold text-sm shadow">
+                                <i class="fa-solid fa-house-user"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900">RED LOTS</h4>
+                                <span class="text-xs font-semibold text-red-600 uppercase tracking-wider">Residents Only</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3">
+                            Strictly reserved 24/7 for registered resident vehicles (1st, 2nd & 3rd approved cars). Non-registered vehicles parked here will be clamped.
+                        </p>
+                        <div class="bg-white/80 rounded border border-red-200 p-2 text-xs text-red-700 font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Must display valid Car decal registered with MCST
+                        </div>
+                    </div>
+
+                    <!-- White Lots -->
+                    <div class="rounded-xl border-2 border-slate-300 bg-slate-100/50 p-5 relative overflow-hidden">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold text-sm shadow">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900">WHITE LOTS</h4>
+                                <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Visitors & Guests</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3">
+                            Open for legitimate visitor cars and contractors. Subject to standard hourly rates and overnight charge rules ($10/night after midnight).
+                        </p>
+                        <div class="bg-white/80 rounded border border-slate-300 p-2 text-xs text-slate-700 font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-ticket"></i> Must display visitor parking slip
+                        </div>
+                    </div>
+
+                    <!-- Green Lots -->
+                    <div class="rounded-xl border-2 border-emerald-500 bg-emerald-50/30 p-5 relative overflow-hidden">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow">
+                                <i class="fa-solid fa-charging-station"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900">GREEN LOTS</h4>
+                                <span class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">EV Charging Only</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3">
+                            Designated specifically for Electric Vehicles actively charging. Non-EVs or non-charging EVs parked here are subject to immediate towing.
+                        </p>
+                        <div class="bg-white/80 rounded border border-emerald-200 p-2 text-xs text-emerald-700 font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-file-circle-check"></i> Must display approval permit from Management
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resident Parking Allocation Policies (BMSMA Framework) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Entitlement Breakdown -->
+                <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
+                        <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-car"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-lg">Resident Entitlement Scheme</h3>
+                            <p class="text-xs text-slate-500">Per Subsidiary Proprietor / Tenant Unit</p>
+                        </div>
+                    </div>
+
+                    <ul class="space-y-4 text-sm">
+                        <li class="flex items-start gap-3">
+                            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold mt-0.5">1</span>
+                            <div>
+                                <span class="font-semibold text-slate-900">1st Registered Vehicle: Guaranteed FREE</span>
+                                <p class="text-slate-500 text-xs mt-0.5">Entitled to 1 complimentary resident lot. Must register with MCST providing Vehicle Log Card, Plate Number & In-vehicle Unit (IU) number.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold mt-0.5">2</span>
+                            <div>
+                                <span class="font-semibold text-slate-900">2nd & 3rd Vehicles: Subject to Lot Availability</span>
+                                <p class="text-slate-500 text-xs mt-0.5">Assigned via ballot or waitlist if carpark capacity permits. Requires full documentation submission. <strong>Monthly season fee of $50 per month, payable quarterly ($150/quarter)</strong>.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold mt-0.5">3</span>
+                            <div>
+                                <span class="font-semibold text-slate-900">Mandatory Data Fields</span>
+                                <p class="text-slate-500 text-xs mt-0.5">Residents must explicitly state vehicle category (<strong class="text-emerald-600">EV</strong> or <strong class="text-amber-600">Petrol/Diesel</strong>) and exact Car Model during registration.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Legal Compliance & BMSMA Enforcement -->
+                <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
+                        <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-gavel"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-lg">BMSMA Legal Provisions & Enforcement</h3>
+                            <p class="text-xs text-slate-500">Building Maintenance and Strata Management Regulations</p>
+                        </div>
+                    </div>
+
+                    <div class="text-xs sm:text-sm text-slate-600 space-y-3 leading-relaxed">
+                        <p>
+                            Under Section 32 & 33 of the BMSMA 2004, the Management Corporation (MCST) is empowered to enforce parking by-laws for the common property.
+                        </p>
+                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <div class="font-semibold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-lock text-red-500"></i> Wheel Clamping & Penalty Fee
+                            </div>
+                            <p class="text-xs text-slate-600">
+                                Unregistered vehicles in Red Lots, unauthorized overnight parkers, or non-EV cars blocking Green Charging Lots are subject to wheel clamping. An administrative release fee of <strong>$107.00 (inclusive of GST)</strong> applies.
+                            </p>
+                        </div>
+                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <div class="font-semibold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-contract text-brand-600"></i> Documentation Requirement
+                            </div>
+                            <p class="text-xs text-slate-600">
+                                LTA Vehicle Log Cards must be updated annually or within 14 days of vehicle change to ensure valid IU access through the EPS barrier.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: RESIDENT VEHICLE REGISTRATION ==================== -->
+        <section id="tab-register" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-brand-900 to-slate-900 p-6 text-white">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-brand-600"></i> MCST Resident Vehicle Registration Portal
+                    </h2>
+                    <p class="text-xs text-slate-300 mt-1">
+                        Register your 1st (Free), 2nd, or 3rd vehicle in accordance with MCST By-Laws.
+                    </p>
+                </div>
+
+                <form id="vehicle-registration-form" onsubmit="window.handleRegistrationSubmit(event)" class="p-6 sm:p-8 space-y-6">
+                    <!-- Resident Unit Details -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <i class="fa-solid fa-house text-brand-600"></i> 1. Resident & Unit Verification
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Unit Number <span class="text-red-500">*</span></label>
+                                <input type="text" id="reg-unit" placeholder="e.g. #08-24" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Owner / Resident Full Name <span class="text-red-500">*</span></label>
+                                <input type="text" id="reg-name" placeholder="As per NRIC/Passport" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Contact Mobile <span class="text-red-500">*</span></label>
+                                <input type="tel" id="reg-phone" placeholder="+65 9123 4567" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+                                <input type="email" id="reg-email" placeholder="resident@domain.com" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vehicle Details -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <i class="fa-solid fa-car-rear text-brand-600"></i> 2. Vehicle Registration & Information
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Vehicle Slot Priority <span class="text-red-500">*</span></label>
+                                <select id="reg-priority" onchange="window.updatePriorityNote()" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none bg-white transition">
+                                    <option value="1st">1st Vehicle (Guaranteed Free Entitlement)</option>
+                                    <option value="2nd">2nd Vehicle (Subject to Lot Availability - $50/mo)</option>
+                                    <option value="3rd">3rd Vehicle (Subject to Lot Availability - $50/mo)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Car License Plate Number <span class="text-red-500">*</span></label>
+                                <input type="text" id="reg-plate" placeholder="e.g. SGB 1234 X" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm uppercase focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">In-Vehicle Unit (IU) Number <span class="text-red-500">*</span></label>
+                                <input type="text" id="reg-iu" placeholder="10-digit IU number (e.g. 1234567890)" pattern="[0-9]{10}" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Car Category / Fuel Type <span class="text-red-500">*</span></label>
+                                <select id="reg-category" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none bg-white transition">
+                                    <option value="Petrol">Petrol / Diesel / Hybrid</option>
+                                    <option value="EV">Electric Vehicle (EV) - Green Lot Access</option>
+                                </select>
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Car Make & Model <span class="text-red-500">*</span></label>
+                                <input type="text" id="reg-model" placeholder="e.g. Tesla Model Y / Toyota Camry / BMW 320i" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-600 focus:border-brand-600 outline-none transition">
+                            </div>
+                        </div>
+
+                        <!-- Priority Info Box -->
+                        <div id="priority-info-box" class="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5 text-sm"></i>
+                            <div>
+                                <span class="font-bold">1st Vehicle Entitlement:</span> Each Subsidiary Proprietor/Unit is entitled to 1 FREE designated parking slot with access to Red Resident Lots upon approval.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LTA Log Card Attachment -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <i class="fa-solid fa-file-pdf text-brand-600"></i> 3. Verification Document (LTA Log Card)
+                        </h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Upload LTA Vehicle Log Card / Ownership Proof <span class="text-red-500">*</span></label>
+                            <div class="border-2 border-dashed border-slate-300 hover:border-brand-600 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50 hover:bg-slate-100/50" onclick="document.getElementById('reg-logcard').click()">
+                                <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                                <p class="text-xs font-medium text-slate-700">Click to upload or drag & drop</p>
+                                <p class="text-[11px] text-slate-400 mt-1">PDF, PNG, JPG or WEBP (Max 5MB)</p>
+                                <input type="file" id="reg-logcard" class="hidden" accept=".pdf,.png,.jpg,.jpeg" onchange="window.handleFileUpload(event)">
+                            </div>
+                            <p id="file-name-display" class="text-xs font-semibold text-brand-600 mt-2 hidden flex items-center gap-1.5">
+                                <i class="fa-solid fa-paperclip"></i> <span id="file-name-text"></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Terms Agreement -->
+                    <div class="flex items-start gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <input type="checkbox" id="reg-terms" required class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-600">
+                        <label for="reg-terms" class="text-xs text-slate-600 leading-relaxed">
+                            I hereby certify that all information supplied is accurate and matches my LTA Vehicle Log Card. I agree to abide by the MCST Parking By-Laws under the Singapore BMSMA Act. I acknowledge that unauthorized parking or false declarations may result in wheel clamping.
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Submit Registration to MCST Management
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: OVERNIGHT PARKING APPROVAL ==================== -->
+        <section id="tab-overnight" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-900 to-slate-900 p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-moon text-amber-400"></i> Overnight & Extended Parking Approval Portal
+                            </h2>
+                            <p class="text-xs text-indigo-200 mt-1">
+                                Submit advance requests to obtain 2 nights / 3 days waiver.
+                            </p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/30">
+                            3-Days Advance Notice Required
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-6 sm:p-8 space-y-6">
+                    <!-- Policy Rule Highlight -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
+                            <div class="font-bold text-indigo-900 text-sm mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-clock"></i> Standard Charge Policy
+                            </div>
+                            <p class="text-xs text-indigo-800 leading-relaxed">
+                                Overnight parking (12:00am - 07:59am) is charged at <strong class="text-indigo-950">$10/night</strong>. 1 night overnight parking is automatically free for registered visitor passes.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <div class="font-bold text-emerald-900 text-sm mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check"></i> Extended Waiver Rule
+                            </div>
+                            <p class="text-xs text-emerald-800 leading-relaxed">
+                                Parking for <strong>2 nights and 3 days</strong> is FREE provided approval is obtained from MCST Management at least <strong>3 days in advance</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form id="overnight-form" onsubmit="window.handleOvernightSubmit(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Resident Host Unit # <span class="text-red-500">*</span></label>
+                                <input type="text" id="ov-unit" placeholder="e.g. #04-12" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Visitor / Driver Name <span class="text-red-500">*</span></label>
+                                <input type="text" id="ov-driver" placeholder="Full name" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Vehicle License Plate <span class="text-red-500">*</span></label>
+                                <input type="text" id="ov-plate" placeholder="e.g. SKA 8888 Z" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm uppercase focus:ring-2 focus:ring-indigo-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">In-Vehicle Unit (IU) Number <span class="text-red-500">*</span></label>
+                                <input type="text" id="ov-iu" placeholder="10-digit IU Number" pattern="[0-9]{10}" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Parking Start Date <span class="text-red-500">*</span></label>
+                                <input type="date" id="ov-startdate" required onchange="window.calculateAdvanceNotice()" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Duration requested <span class="text-red-500">*</span></label>
+                                <select id="ov-duration" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 outline-none bg-white">
+                                    <option value="1">1 Night (Standard Visitor Pass)</option>
+                                    <option value="2">2 Nights & 3 Days (Requires 3-Day Advance Approval)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Reason for Extended Stay <span class="text-red-500">*</span></label>
+                            <textarea id="ov-reason" rows="2" placeholder="e.g. Overseas family visit, festive occasion..." required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 outline-none"></textarea>
+                        </div>
+
+                        <!-- Advance Check Status Indicator -->
+                        <div id="advance-status" class="p-3 rounded-lg bg-slate-100 text-slate-600 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info text-slate-500"></i> Select your parking start date to check 3-day advance compliance.
+                        </div>
+
+                        <button type="submit" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Submit Approval Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: CARPARK STATUS & LOT FINDER ==================== -->
+        <section id="tab-map" class="tab-content hidden space-y-6">
+            <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-square-parking text-brand-600"></i> BASEMENT 1 & LEVEL 1 CARPARK MAP
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        Palm Springs Residence — Architectural Floor Plan & Status
+                    </p>
+                </div>
+
+                <!-- Carpark Layout Image Container with Multi-Level Fallback Chain -->
+                <div class="rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 p-2 sm:p-4 shadow-xl">
+                    <div class="relative w-full overflow-hidden flex items-center justify-center min-h-[250px]">
+                        <!-- Primary Image pointing to the architectural floor plan image -->
+                        <img
+                            id="carpark-layout-img"
+                            src="Carpark Layout_1_2.jpg"
+                            alt="Palm Springs Residence Architectural Carpark Floor Plan"
+                            class="block w-full h-auto max-h-[550px] object-contain mx-auto rounded-lg"
+                            loading="lazy"
+                            onerror="
+                                if (this.src.indexOf('Carpark%20Layout_1_2.jpg') !== -1 || this.src.indexOf('Carpark Layout_1_2.jpg') !== -1) {
+                                    this.src = 'Carpark Layout_1.jpg';
+                                } else if (this.src.indexOf('Carpark%20Layout_1.jpg') !== -1 || this.src.indexOf('Carpark Layout_1.jpg') !== -1) {
+                                    this.src = 'CarPark Layout_4.jpg';
+                                } else if (this.src.indexOf('CarPark%20Layout_4.jpg') !== -1 || this.src.indexOf('CarPark Layout_4.jpg') !== -1) {
+                                    this.src = 'CarPark Layout.jpg';
+                                } else if (this.src.indexOf('CarPark%20Layout.jpg') !== -1 || this.src.indexOf('CarPark Layout.jpg') !== -1) {
+                                    this.src = 'CarPark Layout.png';
+                                } else {
+                                    this.style.display = 'none';
+                                    document.getElementById('carpark-svg-fallback').classList.remove('hidden');
+                                }
+                            "
+                        >
+
+                        <!-- Standby Vector Fallback Graphic -->
+                        <div id="carpark-svg-fallback" class="hidden w-full max-w-4xl mx-auto py-2">
+                            <div class="text-xs text-amber-400 font-semibold mb-2 text-center flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-info"></i> Architectural Floor Plan Graphic Preview (Local image file not detected in project folder)
+                            </div>
+                            <svg viewBox="0 0 1000 550" class="w-full h-auto rounded-lg shadow-2xl bg-slate-900 border border-slate-800">
+                                <!-- Base Floor Plan -->
+                                <rect x="10" y="10" width="980" height="530" rx="12" fill="#1e293b" stroke="#334155" stroke-width="4"/>
+                                
+                                <!-- Central Core Elevator & Staircase Structure -->
+                                <rect x="220" y="180" width="220" height="150" rx="6" fill="#475569" stroke="#64748b" stroke-width="3"/>
+                                <text x="330" y="250" text-anchor="middle" fill="#f8fafc" font-size="14" font-weight="bold">STAIRCASE &</text>
+                                <text x="330" y="270" text-anchor="middle" fill="#f8fafc" font-size="14" font-weight="bold">ELEVATOR LOBBY</text>
+                                
+                                <!-- Vehicular Ramp -->
+                                <rect x="470" y="110" width="60" height="300" rx="4" fill="#334155" stroke="#475569" stroke-width="2"/>
+                                <text x="500" y="260" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="bold" transform="rotate(-90 500 260)">CONCRETE VEHICULAR ACCESS RAMP</text>
+
+                                <!-- Red Resident Lots Top Row -->
+                                <g fill="#ef4444" opacity="0.85" stroke="#b91c1c" stroke-width="2">
+                                    <rect x="120" y="30" width="35" height="70" rx="3"/><rect x="160" y="30" width="35" height="70" rx="3"/>
+                                    <rect x="200" y="30" width="35" height="70" rx="3"/><rect x="240" y="30" width="35" height="70" rx="3"/>
+                                    <rect x="280" y="30" width="35" height="70" rx="3"/><rect x="320" y="30" width="35" height="70" rx="3"/>
+                                </g>
+                                <!-- Red Resident Lots Bottom Row -->
+                                <g fill="#ef4444" opacity="0.85" stroke="#b91c1c" stroke-width="2">
+                                    <rect x="120" y="440" width="35" height="70" rx="3"/><rect x="160" y="440" width="35" height="70" rx="3"/>
+                                    <rect x="200" y="440" width="35" height="70" rx="3"/><rect x="240" y="440" width="35" height="70" rx="3"/>
+                                    <rect x="280" y="440" width="35" height="70" rx="3"/><rect x="320" y="440" width="35" height="70" rx="3"/>
+                                </g>
+
+                                <!-- White Visitor Lots -->
+                                <g fill="#cbd5e1" opacity="0.9" stroke="#64748b" stroke-width="2">
+                                    <rect x="620" y="30" width="35" height="70" rx="3"/><rect x="660" y="30" width="35" height="70" rx="3"/>
+                                    <rect x="700" y="30" width="35" height="70" rx="3"/><rect x="740" y="30" width="35" height="70" rx="3"/>
+                                </g>
+
+                                <!-- Green EV Charging Lots -->
+                                <g fill="#10b981" opacity="0.9" stroke="#047857" stroke-width="2">
+                                    <rect x="400" y="440" width="45" height="70" rx="3"/><rect x="450" y="440" width="45" height="70" rx="3"/>
+                                    <rect x="800" y="440" width="45" height="70" rx="3"/><rect x="850" y="440" width="45" height="70" rx="3"/>
+                                </g>
+
+                                <!-- Legend -->
+                                <rect x="580" y="180" width="380" height="150" rx="8" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+                                <text x="770" y="210" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="bold">COLOR CODE LEGEND</text>
+                                
+                                <rect x="600" y="230" width="20" height="20" fill="#ef4444" rx="3"/>
+                                <text x="630" y="245" fill="#f8fafc" font-size="12" font-weight="bold">RED LOTS: Resident Season Vehicles</text>
+                                
+                                <rect x="600" y="260" width="20" height="20" fill="#cbd5e1" rx="3"/>
+                                <text x="630" y="275" fill="#f8fafc" font-size="12" font-weight="bold">WHITE LOTS: Visitor & Guest Cars</text>
+                                
+                                <rect x="600" y="290" width="20" height="20" fill="#10b981" rx="3"/>
+                                <text x="630" y="305" fill="#f8fafc" font-size="12" font-weight="bold">GREEN LOTS: EV Charging Bay</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Legend & Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                    <div class="text-xs font-semibold text-slate-700">Filter Parking Lots by Category:</div>
+                    <div class="flex items-center gap-2 text-xs font-medium">
+                        <button onclick="window.filterLots('all')" class="px-3 py-1.5 rounded-lg bg-slate-800 text-white shadow-sm">All</button>
+                        <button onclick="window.filterLots('Red')" class="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200">Red (Resident)</button>
+                        <button onclick="window.filterLots('White')" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-300">White (Visitor)</button>
+                        <button onclick="window.filterLots('Green')" class="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200">Green (EV)</button>
+                    </div>
+                </div>
+
+                <!-- Live Capacity Breakdown Counters -->
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="p-3 sm:p-4 rounded-xl bg-red-50 border border-red-200">
+                        <div class="text-xs font-bold text-red-600 uppercase">Red Resident Lots</div>
+                        <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1" id="count-red">4 / 8 Available</div>
+                    </div>
+                    <div class="p-3 sm:p-4 rounded-xl bg-slate-100 border border-slate-200">
+                        <div class="text-xs font-bold text-slate-600 uppercase">White Visitor Lots</div>
+                        <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1" id="count-white">4 / 6 Available</div>
+                    </div>
+                    <div class="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                        <div class="text-xs font-bold text-emerald-600 uppercase">Green EV Lots</div>
+                        <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1" id="count-green">1 / 2 Available</div>
+                    </div>
+                </div>
+
+                <!-- Lots Directory Grid -->
+                <div id="lots-grid-container" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                    <!-- JavaScript dynamically populates lots here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 5: FEE CALCULATOR ==================== -->
+        <section id="tab-calculator" class="tab-content hidden space-y-6">
+            <div class="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-brand-800 to-slate-900 p-6 text-white">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-brand-400"></i> Automated Parking Fee Estimator
+                    </h2>
+                    <p class="text-xs text-slate-300 mt-1">
+                        Calculate exact charges based on arrival time, departure time, and advance notice waiver status.
+                    </p>
+                </div>
+
+                <div class="p-6 sm:p-8 space-y-5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">User Category <span class="text-red-500">*</span></label>
+                        <select id="calc-type" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm outline-none bg-white">
+                            <option value="visitor">Visitor / Guest Vehicle</option>
+                            <option value="resident-1st">Resident - 1st Registered Car (Free)</option>
+                            <option value="resident-2nd">Resident - 2nd/3rd Registered Car ($50/mo)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Arrival Date & Time <span class="text-red-500">*</span></label>
+                            <input type="datetime-local" id="calc-arrival" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Departure Date & Time <span class="text-red-500">*</span></label>
+                            <input type="datetime-local" id="calc-departure" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Obtained 3-Days Advance Management Approval?</label>
+                        <select id="calc-advance" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm outline-none bg-white">
+                            <option value="no">No (Standard Overnight Fee $10/night applies after 1st night)</option>
+                            <option value="yes">Yes (Eligible for 2 Nights & 3 Days Free Waiver)</option>
+                        </select>
+                    </div>
+
+                    <button onclick="window.calculateFee()" class="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-coins"></i> Calculate Fee
+                    </button>
+
+                    <div id="calc-result" class="p-4 rounded-xl bg-slate-100 text-slate-600 text-xs">
+                        Select entry and exit times above to calculate estimated parking charges.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== MCST ADMIN PORTAL (TOGGLEABLE) ==================== -->
+        <section id="admin-portal-section" class="hidden mt-12 bg-slate-900 rounded-2xl text-white p-6 sm:p-8 shadow-2xl border border-slate-800 space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield text-amber-400"></i> MCST Managing Agent Console
+                    </h3>
+                    <p class="text-xs text-slate-400">Barrier Access & Permit Processing Center</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold border border-emerald-500/30">EPS Barrier Online</span>
+            </div>
+
+            <!-- Admin Stats Summary -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700">
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Registered Units</div>
+                    <div class="text-xl font-bold text-white mt-1">142 / 160</div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700">
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Active IU Database</div>
+                    <div class="text-xl font-bold text-white mt-1">188 Vehicles</div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700">
+                    <div class="text-[11px] font-semibold text-amber-400 uppercase">Pending Logcards</div>
+                    <div class="text-xl font-bold text-amber-300 mt-1">3 Applications</div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700">
+                    <div class="text-[11px] font-semibold text-emerald-400 uppercase">Overnight Permits</div>
+                    <div class="text-xl font-bold text-emerald-300 mt-1">5 Active Passes</div>
+                </div>
+            </div>
+
+            <!-- Recent Vehicle Applications Table -->
+            <div>
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Pending Registration Queue</h4>
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950 text-slate-400 uppercase font-semibold">
+                            <tr>
+                                <th class="p-3">Unit</th>
+                                <th class="p-3">Resident</th>
+                                <th class="p-3">Priority</th>
+                                <th class="p-3">Plate & Model</th>
+                                <th class="p-3">Fuel</th>
+                                <th class="p-3">Logcard</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="p-3 font-mono font-bold text-white">#08-24</td>
+                                <td class="p-3">Tan Ah Kow</td>
+                                <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 text-[10px] font-bold">1st (Free)</span></td>
+                                <td class="p-3 font-semibold">SGB 1234 X (Tesla Y)</td>
+                                <td class="p-3"><span class="text-emerald-400 font-bold">EV</span></td>
+                                <td class="p-3"><span class="text-brand-400 underline cursor-pointer"><i class="fa-solid fa-file-pdf"></i> View.pdf</span></td>
+                                <td class="p-3 flex gap-2">
+                                    <button onclick="window.showToast('Approved IU SGB1234X for EPS barrier access!')" class="px-2.5 py-1 rounded bg-emerald-600 text-white font-bold text-[11px]">Approve</button>
+                                    <button onclick="window.showToast('Rejected application', 'danger')" class="px-2.5 py-1 rounded bg-rose-600 text-white font-bold text-[11px]">Reject</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="p-3 font-mono font-bold text-white">#04-12</td>
+                                <td class="p-3">Sarah Wong</td>
+                                <td class="p-3"><span class="px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[10px] font-bold">2nd ($50/mo)</span></td>
+                                <td class="p-3 font-semibold">SMN 8888 A (BMW 320i)</td>
+                                <td class="p-3"><span class="text-slate-400 font-bold">Petrol</span></td>
+                                <td class="p-3"><span class="text-brand-400 underline cursor-pointer"><i class="fa-solid fa-file-pdf"></i> View.pdf</span></td>
+                                <td class="p-3 flex gap-2">
+                                    <button onclick="window.showToast('Approved 2nd vehicle $50/mo season pass!')" class="px-2.5 py-1 rounded bg-emerald-600 text-white font-bold text-[11px]">Approve</button>
+                                    <button onclick="window.showToast('Rejected application', 'danger')" class="px-2.5 py-1 rounded bg-rose-600 text-white font-bold text-[11px]">Reject</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 py-8 mt-12 text-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <p class="font-bold text-slate-200 text-sm mb-1">Palm Springs Residence MCST Plan No. 4281</p>
+                <p>Governed by the Building Maintenance and Strata Management Act (BMSMA) 2004, Singapore.</p>
+                <p class="text-slate-500 mt-1">Management Office: 65111111 | Guardhouse: 65888888 | Email: info@gmail.com</p>
+            </div>
+            <div class="text-right text-slate-500">
+                <p>&copy; MCST Vehicle Parking Portal & Rules Directory.</p>
+                <p class="text-[10px] text-slate-600">Electric Vehicle Charging (Green), Resident (Red), Visitor (White)</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== MCST AI CHATBOT (GEMINI POWERED) ==================== -->
+    <div id="mcst-gemini-chatbot-root" class="font-sans">
+        <!-- Floating Trigger Button -->
+        <button id="chatbot-toggle-btn" onclick="window.toggleChatbot()" 
+            class="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-brand-700 via-brand-800 to-slate-900 hover:from-brand-600 hover:to-slate-800 text-white rounded-full p-4 shadow-2xl flex items-center gap-3 transition-all transform hover:scale-105 active:scale-95 group border-2 border-brand-400/40 cursor-pointer"
+            title="Ask MCST Parking AI Assistant">
+            <div class="relative flex items-center justify-center">
+                <i class="fa-solid fa-robot text-xl text-brand-200 group-hover:rotate-12 transition-transform"></i>
+                <span class="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+            </div>
+            <span class="font-bold text-xs tracking-wide pr-1 hidden sm:inline text-white">Ask Parking AI</span>
+        </button>
+
+        <!-- Welcome Tooltip Bubble (Disappears after first open or dismiss) -->
+        <div id="chatbot-promo-tooltip" class="fixed bottom-24 right-6 z-50 bg-slate-900/95 backdrop-blur text-white text-xs px-3.5 py-2.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-2.5 max-w-xs animate-bounce pointer-events-auto">
+            <div class="w-7 h-7 rounded-full bg-brand-600/50 flex items-center justify-center shrink-0 text-amber-300">
+                <i class="fa-solid fa-sparkles text-xs"></i>
+            </div>
+            <div class="text-[11px] leading-tight flex-1">
+                <span class="font-bold text-amber-300">Got questions?</span> Ask our Gemini AI about season parking, overnight passes & EV lots!
+            </div>
+            <button onclick="document.getElementById('chatbot-promo-tooltip').remove()" class="text-slate-400 hover:text-white text-base leading-none px-1 cursor-pointer">&times;</button>
+        </div>
+
+        <!-- Chat Window Modal -->
+        <div id="chatbot-window" class="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 w-[95vw] sm:w-[420px] h-[580px] max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col z-50 overflow-hidden transition-all duration-300 transform scale-95 opacity-0 pointer-events-none origin-bottom-right">
+            
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-brand-900 via-brand-800 to-slate-900 text-white p-3.5 flex items-center justify-between shadow-md select-none shrink-0 border-b border-brand-700/50">
+                <div class="flex items-center gap-2.5">
+                    <div class="relative w-9 h-9 rounded-full bg-gradient-to-tr from-brand-700 to-brand-500 border border-brand-300/40 flex items-center justify-center text-white text-base shadow-inner">
+                        <i class="fa-solid fa-robot text-sm"></i>
+                        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-900 rounded-full"></span>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-xs leading-tight flex items-center gap-1.5">
+                            Palm Springs AI Concierge
+                            <span class="bg-brand-500/30 text-[9px] px-1.5 py-0.5 rounded text-brand-200 font-normal">MCST #4281</span>
+                        </h3>
+                        <div class="text-[10px] text-slate-300 flex items-center gap-1 mt-0.5">
+                            <i class="fa-solid fa-sparkles text-amber-300 text-[9px]"></i>
+                            <span>Gemini AI Connected</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-1 text-slate-300">
+                    <button onclick="window.toggleChatApiKeyModal()" title="API Key Settings" class="w-7 h-7 rounded-lg hover:bg-brand-800 hover:text-white flex items-center justify-center transition text-xs cursor-pointer">
+                        <i class="fa-solid fa-key"></i>
+                    </button>
+                    <button onclick="window.resetChatbotHistory()" title="Clear Chat History" class="w-7 h-7 rounded-lg hover:bg-brand-800 hover:text-white flex items-center justify-center transition text-xs cursor-pointer">
+                        <i class="fa-solid fa-arrow-rotate-right"></i>
+                    </button>
+                    <button onclick="window.toggleChatbot()" title="Close Chat" class="w-7 h-7 rounded-lg hover:bg-brand-800 hover:text-white flex items-center justify-center transition text-sm font-bold cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Key Settings Drawer (Collapsible) -->
+            <div id="chat-api-settings" class="hidden bg-slate-900 text-white p-3 border-b border-slate-800 text-xs transition-all shrink-0">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="font-semibold text-slate-300 text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-key text-amber-400"></i> Gemini API Key Configuration
+                    </span>
+                    <button onclick="window.toggleChatApiKeyModal()" class="text-slate-400 hover:text-white text-xs cursor-pointer">&times;</button>
+                </div>
+                <div class="flex gap-2">
+                    <input type="password" id="custom-api-key-input" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-brand-500 font-mono" placeholder="Gemini API Key...">
+                    <button onclick="window.saveCustomApiKey()" class="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer">Save</button>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">Default Gemini key configured. Stored locally in your browser session.</p>
+            </div>
+
+            <!-- Messages Container -->
+            <div id="chatbot-messages" class="flex-1 p-3.5 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+                <!-- Messages populated by JS -->
+            </div>
+
+            <!-- Quick Suggestion Pills -->
+            <div class="p-2 bg-slate-100 border-t border-slate-200 shrink-0">
+                <div class="text-[10px] text-slate-500 font-semibold mb-1 px-1 flex items-center justify-between">
+                    <span>Quick Prompts:</span>
+                    <span class="text-[9px] text-slate-400">Click to ask</span>
+                </div>
+                <div class="flex gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                    <button onclick="window.sendSuggestedPrompt('What are the rules and season fees for 1st vs 2nd resident vehicles?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition shadow-xs cursor-pointer">🚗 1st & 2nd Cars</button>
+                    <button onclick="window.sendSuggestedPrompt('How does overnight visitor parking work and what is the fee?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition shadow-xs cursor-pointer">🌙 Overnight Pass</button>
+                    <button onclick="window.sendSuggestedPrompt('Where are the EV charging lots and what are the rates?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition shadow-xs cursor-pointer">⚡ EV Charging Lots</button>
+                    <button onclick="window.sendSuggestedPrompt('What is the wheel clamping fee and how can I get it unlocked?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition shadow-xs cursor-pointer">⚠️ Clamping ($107)</button>
+                    <button onclick="window.sendSuggestedPrompt('What documents do I need to register my vehicle IU with MCST?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition shadow-xs cursor-pointer">📝 Registration Steps</button>
+                </div>
+            </div>
+
+            <!-- Input Bar -->
+            <form id="chatbot-form" onsubmit="window.handleChatSubmit(event)" class="p-2.5 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0">
+                <input type="text" id="chatbot-input" 
+                    placeholder="Ask about lots, overnight passes, BMSMA bylaws..." 
+                    class="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition"
+                    autocomplete="off">
+                <button type="submit" id="chatbot-send-btn" 
+                    class="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-xl px-3.5 py-2 text-xs font-semibold flex items-center justify-center transition shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        
+        function getApiKey() {
+            return (window.CONFIG && window.CONFIG.GEMINI_API_KEY) || 
+                   localStorage.getItem('mcst_gemini_api_key') || 
+                   '';
+        }
+
+        const MCST_SYSTEM_PROMPT = `You are the official AI Parking Concierge for Palm Springs Residence MCST Plan No. 4281 in Singapore.
+You provide courteous, accurate, concise, and structured answers regarding vehicle parking bylaws under the Building Maintenance and Strata Management Act (BMSMA) 2004.
+
+Official Estate Bylaws & Rules Reference:
+1. 1st Vehicle (Resident Entitlement):
+   - Every Subsidiary Proprietor / Unit is entitled to ONE (1) FREE designated resident parking lot.
+   - Access to Red Resident Lots (e.g. R-01 to R-35).
+   - Approval requires uploading LTA Vehicle Log Card (owner/resident name) and IU registration for Electronic Parking System (EPS) barrier.
+
+2. 2nd & 3rd Vehicles (Season Parking):
+   - Subject to lot availability and quarterly MCST balloting or waitlist.
+   - Monthly season fee: $50 / month, payable quarterly ($150 per quarter).
+   - Strict maximum of 2 vehicles per unit unless special MCST Council exception is granted.
+
+3. Visitor Parking (White Lots):
+   - Day-time (07:00 to 22:00): 15-minute free grace period. Thereafter $1.00 per hour (or part thereof).
+   - Overnight Visitor Parking (22:00 to 07:00): Requires prior digital permit registration via the portal. Flat rate $10.00 per night. Strictly capped at 3 consecutive nights per visitor vehicle.
+   - Visitors must ONLY park in marked White Lots (W-01 to W-15).
+
+4. EV Charging Lots (Green Lots):
+   - Located at Basement 1 (B1-01 to B1-06).
+   - Charge+ 22kW AC Type 2 chargers.
+   - Tariff: $0.58/kWh via Charge+ app.
+   - Maximum 3 hours charging limit per session.
+   - 30-minute grace period after charging ends; after that, an idle surcharge of $5.00/hour is levied.
+   - Non-EV or unplugged vehicles parked in EV bays are clamped immediately.
+
+5. Wheel Clamping & Penalties:
+   - Unauthorized parking in Red resident lots, blocking hydrants/driveways, or unauthorized overnight parking incurs immediate wheel clamping.
+   - Clamping release fee: $107.00 (inclusive of GST).
+   - Clamped vehicles must be settled via PayNow or at Security Guardhouse before release.
+
+6. Management Contacts:
+   - Managing Agent Office: 65111111 (Mon-Fri 9am-5pm, Sat 9am-1pm)
+   - 24/7 Security Guardhouse: 65888888
+   - Email: info@gmail.com
+
+Formatting Guidelines:
+- Keep answers polite, helpful, and concise.
+- Use bold text for key numbers, fees, and lot names.
+- When relevant, you can include interactive action tags:
+  - [ACTION:REGISTER] to link to registration
+  - [ACTION:OVERNIGHT] to link to overnight pass
+  - [ACTION:MAP] to link to the carpark layout
+  - [ACTION:CALC] to link to fee calculator
+`;
+
+        let chatHistory = [];
+        let isWaitingForResponse = false;
+
+        // Toggle Chatbot Window
+        window.toggleChatbot = function() {
+            const win = document.getElementById('chatbot-window');
+            const tooltip = document.getElementById('chatbot-promo-tooltip');
+            if (tooltip) tooltip.remove();
+
+            if (win.classList.contains('pointer-events-none')) {
+                win.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
+                win.classList.add('scale-100', 'opacity-100', 'pointer-events-auto');
+                if (chatHistory.length === 0) {
+                    renderInitialGreeting();
+                }
+                setTimeout(() => {
+                    const input = document.getElementById('chatbot-input');
+                    if (input) input.focus();
+                }, 200);
+            } else {
+                win.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
+                win.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+            }
+        };
+
+        window.toggleChatApiKeyModal = function() {
+            const drawer = document.getElementById('chat-api-settings');
+            const input = document.getElementById('custom-api-key-input');
+            if (!drawer) return;
+            drawer.classList.toggle('hidden');
+            if (!drawer.classList.contains('hidden') && input) {
+                input.value = getApiKey();
+                input.focus();
+            }
+        };
+
+        window.saveCustomApiKey = function() {
+            const input = document.getElementById('custom-api-key-input');
+            if (input && input.value.trim()) {
+                localStorage.setItem('mcst_gemini_api_key', input.value.trim());
+                window.toggleChatApiKeyModal();
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Gemini API key updated successfully!');
+                }
+            }
+        };
+
+        window.resetChatbotHistory = function() {
+            chatHistory = [];
+            const msgContainer = document.getElementById('chatbot-messages');
+            if (msgContainer) msgContainer.innerHTML = '';
+            renderInitialGreeting();
+            if (typeof window.showToast === 'function') {
+                window.showToast('Chat history cleared');
+            }
+        };
+
+        function renderInitialGreeting() {
+            const msgContainer = document.getElementById('chatbot-messages');
+            if (!msgContainer) return;
+            const greetingHtml = `
+                <div class="flex items-start gap-2.5">
+                    <div class="w-7 h-7 rounded-full bg-brand-800 text-brand-200 flex items-center justify-center shrink-0 text-xs shadow">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="space-y-2 max-w-[85%]">
+                        <div class="bg-white p-3 rounded-2xl rounded-tl-sm shadow-xs border border-slate-200 text-slate-800 leading-relaxed text-[11px]">
+                            <p class="font-bold text-slate-900 mb-1">Hello! 👋 Welcome to Palm Springs Residence MCST #4281.</p>
+                            <p>I am your Gemini-powered Parking Assistant. I can help you with:</p>
+                            <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-600">
+                                <li><strong>1st vs 2nd Vehicle</strong> season fees & ballots</li>
+                                <li><strong>Visitor & Overnight</strong> permits ($10/night)</li>
+                                <li><strong>EV charging</strong> (Basement 1 green lots, $0.58/kWh)</li>
+                                <li><strong>Wheel clamping</strong> policy ($107 release fee)</li>
+                            </ul>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            <button onclick="window.switchTab('register')" class="px-2 py-0.5 rounded-md bg-brand-50 border border-brand-200 text-brand-700 hover:bg-brand-100 text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-file-pen text-[9px]"></i> Vehicle Registration
+                            </button>
+                            <button onclick="window.switchTab('overnight')" class="px-2 py-0.5 rounded-md bg-brand-50 border border-brand-200 text-brand-700 hover:bg-brand-100 text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-moon text-[9px]"></i> Overnight Pass
+                            </button>
+                            <button onclick="window.switchTab('map')" class="px-2 py-0.5 rounded-md bg-brand-50 border border-brand-200 text-brand-700 hover:bg-brand-100 text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-map-location-dot text-[9px]"></i> Carpark Map
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            msgContainer.innerHTML = greetingHtml;
+        }
+
+        window.sendSuggestedPrompt = function(promptText) {
+            const input = document.getElementById('chatbot-input');
+            if (input) {
+                input.value = promptText;
+                window.handleChatSubmit(new Event('submit'));
+            }
+        };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatBotMarkdown(text) {
+            let html = escapeHtml(text);
+            
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Action tags
+            html = html.replace(/\[ACTION:REGISTER\]/g, '<button onclick="window.switchTab(\'register\')" class="inline-flex items-center gap-1 my-1 px-2.5 py-1 rounded-lg bg-brand-600 text-white font-bold text-[10px] hover:bg-brand-700 transition shadow-xs cursor-pointer"><i class="fa-solid fa-file-pen"></i> Open Registration Form</button>');
+            html = html.replace(/\[ACTION:OVERNIGHT\]/g, '<button onclick="window.switchTab(\'overnight\')" class="inline-flex items-center gap-1 my-1 px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold text-[10px] hover:bg-amber-700 transition shadow-xs cursor-pointer"><i class="fa-solid fa-moon"></i> Apply Overnight Pass</button>');
+            html = html.replace(/\[ACTION:MAP\]/g, '<button onclick="window.switchTab(\'map\')" class="inline-flex items-center gap-1 my-1 px-2.5 py-1 rounded-lg bg-slate-800 text-white font-bold text-[10px] hover:bg-slate-700 transition shadow-xs cursor-pointer"><i class="fa-solid fa-map"></i> View Carpark Layout</button>');
+            html = html.replace(/\[ACTION:CALC\]/g, '<button onclick="window.switchTab(\'calculator\')" class="inline-flex items-center gap-1 my-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 transition shadow-xs cursor-pointer"><i class="fa-solid fa-calculator"></i> Open Fee Calculator</button>');
+
+            // Bullet lists
+            html = html.replace(/(?:^|\n)[*-]\s+(.+)/g, '<li class="ml-3 my-0.5">$1</li>');
+            html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul class="list-disc space-y-0.5 my-1.5">$0</ul>');
+
+            // Line breaks
+            html = html.replace(/\n\n/g, '<br><br>');
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+
+        window.handleChatSubmit = async function(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (isWaitingForResponse) return;
+
+            const input = document.getElementById('chatbot-input');
+            const sendBtn = document.getElementById('chatbot-send-btn');
+            const messagesContainer = document.getElementById('chatbot-messages');
+            const query = input.value.trim();
+            if (!query) return;
+
+            // Render User Message
+            input.value = '';
+            input.disabled = true;
+            sendBtn.disabled = true;
+            isWaitingForResponse = true;
+
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = 'flex items-start justify-end gap-2';
+            userMsgDiv.innerHTML = `
+                <div class="bg-brand-600 text-white p-2.5 px-3 rounded-2xl rounded-tr-xs shadow-xs max-w-[85%] leading-relaxed text-[11px]">
+                    ${escapeHtml(query)}
+                </div>
+                <div class="w-7 h-7 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 text-xs">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            `;
+            messagesContainer.appendChild(userMsgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Append to local history
+            chatHistory.push({
+                role: 'user',
+                parts: [{ text: query }]
+            });
+
+            // Typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'bot-typing-indicator';
+            typingDiv.className = 'flex items-start gap-2.5';
+            typingDiv.innerHTML = `
+                <div class="w-7 h-7 rounded-full bg-brand-800 text-brand-200 flex items-center justify-center shrink-0 text-xs shadow">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="bg-white p-3 rounded-2xl rounded-tl-xs shadow-xs border border-slate-200 text-slate-500 flex items-center gap-1.5 text-xs">
+                    <span class="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce"></span>
+                    <span class="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                    <span class="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                    <span class="text-[10px] text-slate-400 ml-1 font-medium">Gemini is thinking...</span>
+                </div>
+            `;
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Call Gemini API with Fallback Models
+            const apiKey = getApiKey();
+            let replyText = null;
+            let lastError = null;
+
+            for (const model of GEMINI_MODELS) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            system_instruction: {
+                                parts: [{ text: MCST_SYSTEM_PROMPT }]
+                            },
+                            contents: chatHistory,
+                            generationConfig: {
+                                temperature: 0.7,
+                                maxOutputTokens: 800
+                            }
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                            replyText = data.candidates[0].content.parts.map(p => p.text).join('\n');
+                            break;
+                        }
+                    } else {
+                        const errData = await response.json().catch(() => ({}));
+                        lastError = errData.error ? errData.error.message : `HTTP ${response.status}`;
+                        console.warn(`Model ${model} returned error:`, lastError);
+                    }
+                } catch (err) {
+                    lastError = err.message;
+                    console.warn(`Network/fetch failed for ${model}:`, err);
+                }
+            }
+
+            // Remove typing indicator
+            const typingEl = document.getElementById('bot-typing-indicator');
+            if (typingEl) typingEl.remove();
+
+            // Render Bot Response
+            const botMsgDiv = document.createElement('div');
+            botMsgDiv.className = 'flex items-start gap-2.5';
+
+            if (replyText) {
+                chatHistory.push({
+                    role: 'model',
+                    parts: [{ text: replyText }]
+                });
+
+                botMsgDiv.innerHTML = `
+                    <div class="w-7 h-7 rounded-full bg-brand-800 text-brand-200 flex items-center justify-center shrink-0 text-xs shadow">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-xs shadow-xs border border-slate-200 text-slate-800 leading-relaxed text-[11px] max-w-[85%] space-y-1">
+                        ${formatBotMarkdown(replyText)}
+                    </div>
+                `;
+            } else {
+                botMsgDiv.innerHTML = `
+                    <div class="w-7 h-7 rounded-full bg-rose-700 text-white flex items-center justify-center shrink-0 text-xs shadow">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-2xl rounded-tl-xs text-[11px] max-w-[85%] space-y-1">
+                        <div class="font-bold flex items-center gap-1 text-rose-900">
+                            <i class="fa-solid fa-circle-exclamation"></i> Connection issue
+                        </div>
+                        <p>${escapeHtml(lastError || 'Unable to reach Gemini API. Please check your internet connection or verify the API key.')}</p>
+                        <button onclick="window.toggleChatApiKeyModal()" class="text-rose-700 underline font-semibold text-[10px] mt-1 block cursor-pointer">Check or update API key</button>
+                    </div>
+                `;
+            }
+
+            messagesContainer.appendChild(botMsgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            input.disabled = false;
+            sendBtn.disabled = false;
+            isWaitingForResponse = false;
+            input.focus();
+        };
+    })();
+    </script>
+</body>
+</html>
